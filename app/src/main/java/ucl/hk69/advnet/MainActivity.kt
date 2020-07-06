@@ -7,6 +7,7 @@ import android.content.SharedPreferences
 import android.graphics.Color
 import android.os.Bundle
 import android.util.Base64
+import android.util.Log
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.security.crypto.EncryptedSharedPreferences
@@ -24,6 +25,8 @@ class MainActivity : AppCompatActivity() {
     private val mySup = MySupportClass()
     private val keyGenParameterSpec = MasterKeys.AES256_GCM_SPEC
     private val masterKeyAlias = MasterKeys.getOrCreate(keyGenParameterSpec)
+    private var socket: Socket? = null
+    private val ip = "192.168.1.100"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -75,18 +78,20 @@ class MainActivity : AppCompatActivity() {
 
                             val secKey = mySup.genSecKey(p, g, othersY, privKey)
 
-                            val strIP = btDis.readUTF()
-                            editor.putString("key", Base64.encodeToString(secKey.encoded, Base64.DEFAULT))
-                            editor.putString("ip", strIP)
+                            editor.putString("key", mySup.secKey2StrKey(secKey))
                             editor.apply()
 
-                            dos = DataOutputStream(Socket(strIP, mySup.PORT).getOutputStream())
+                            btDis.close()
+                            btDos.close()
+                            btSoc?.close()
+                            dos = checkData(preferences)
                         }
                     }
                     .setNegativeButton("Cancel") { _, _ -> }
                     .show()
             }catch (e:Exception){
-                Snackbar.make(it, "Connection Error", Snackbar.LENGTH_SHORT).show()
+                Snackbar.make(it, "Error", Snackbar.LENGTH_SHORT).show()
+                e.printStackTrace()
             }
         }
 
@@ -107,7 +112,6 @@ class MainActivity : AppCompatActivity() {
 
         buttonState.setOnClickListener {
             if(dos != null) {
-
                 AlertDialog.Builder(this) // FragmentではActivityを取得して生成
                     .setTitle(getString(R.string.dialog_title_state))
                     .setItems(stateArray) { _, which ->
@@ -132,6 +136,11 @@ class MainActivity : AppCompatActivity() {
                     }.show()
             }else Snackbar.make(it, "通信できませんでした", Snackbar.LENGTH_SHORT).show()
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        socket?.close()
     }
 
     private fun setBottunSyoto(){
@@ -159,9 +168,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkData(pref:SharedPreferences):DataOutputStream?{
-        val strIP = pref.getString("ip", null)
-
-        return if((pref.getString("key", null) == null) || (strIP == null)) {
+        return if((pref.getString("key", null) == null)) {
             buttonConnect.setTextColor(Color.RED)
             textKeyState.text = getString(R.string.not_have_key)
             null
@@ -169,7 +176,8 @@ class MainActivity : AppCompatActivity() {
             buttonConnect.setTextColor(Color.GRAY)
             textKeyState.text = getString(R.string.have_key)
 
-            DataOutputStream(Socket(strIP, mySup.PORT).getOutputStream())
+            socket = Socket(ip, mySup.PORT)
+            DataOutputStream(socket!!.getOutputStream())
         }
     }
 }
