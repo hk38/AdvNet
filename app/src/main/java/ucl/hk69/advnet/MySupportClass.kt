@@ -1,6 +1,5 @@
 package ucl.hk69.advnet
 
-import android.bluetooth.BluetoothAdapter
 import android.util.Base64
 import java.math.BigInteger
 import java.security.KeyFactory
