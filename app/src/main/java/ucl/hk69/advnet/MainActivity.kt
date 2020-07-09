@@ -25,8 +25,9 @@ class MainActivity : AppCompatActivity() {
     private val mySup = MySupportClass()
     private val keyGenParameterSpec = MasterKeys.AES256_GCM_SPEC
     private val masterKeyAlias = MasterKeys.getOrCreate(keyGenParameterSpec)
-    private var socket: Socket? = null
     private val ip = "192.168.1.100"
+    private var socket: Socket? = null
+    private var dos:DataOutputStream? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,7 +38,7 @@ class MainActivity : AppCompatActivity() {
         val stateArray = arrayOf(getString(R.string.state_syoto), getString(R.string.state_nono), getString(R.string.state_yesno), getString(R.string.state_yesyes))
         var kaigityu = false
 
-        var dos = checkData(preferences)
+        dos = checkData(preferences)
 
         buttonConnect.setOnClickListener {
             try {
@@ -62,28 +63,27 @@ class MainActivity : AppCompatActivity() {
                             val btDis = DataInputStream(btSoc!!.inputStream)
                             val btDos = DataOutputStream(btSoc!!.outputStream)
 
-                            val keyPair = mySup.genKeyPair()
-                            val pubKey = keyPair.public as DHPublicKey
-                            val paramSpec = pubKey.params
-                            val p = paramSpec.p
-                            val g = paramSpec.g
+                            val p = btDis.readUTF().toBigInteger()
+                            val g = btDis.readUTF().toBigInteger()
+                            val othersY = btDis.readUTF().toBigInteger()
 
+                            val keyPair = mySup.makeKeyPair(p, g)
                             val privKey = keyPair.private as DHPrivateKey
+                            val pubKey = keyPair.public as DHPublicKey
                             val y = pubKey.y
 
-                            btDos.writeUTF(p.toString())
-                            btDos.writeUTF(g.toString())
                             btDos.writeUTF(y.toString())
-                            val othersY = btDis.readUTF().toBigInteger()
 
                             val secKey = mySup.genSecKey(p, g, othersY, privKey)
 
                             editor.putString("key", mySup.secKey2StrKey(secKey))
                             editor.apply()
 
-                            btDis.close()
-                            btDos.close()
-                            btSoc?.close()
+                            if(btSoc!!.isConnected) {
+                                btDis.close()
+                                btDos.close()
+                                btSoc?.close()
+                            }
                             dos = checkData(preferences)
                         }
                     }
@@ -139,8 +139,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        if(socket?.isConnected!!){
+            if (!socket?.isOutputShutdown!!) {
+                dos?.writeByte(mySup.DISCONNECT)
+                dos?.close()
+            }
+            socket?.close()
+        }
         super.onDestroy()
-        socket?.close()
     }
 
     private fun setBottunSyoto(){

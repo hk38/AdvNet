@@ -25,6 +25,7 @@ class MySupportClass {
     val STATE_YELLOW = 4
     val STATE_GREEN = 5
     val STATE_OFF = 6
+    val DISCONNECT = 7
 
     fun genKeyPair(): KeyPair {
         val keyGen: KeyPairGenerator = KeyPairGenerator.getInstance("DiffieHellman")
@@ -42,11 +43,11 @@ class MySupportClass {
     fun genSecKey(p: BigInteger, g: BigInteger, othersY: BigInteger, myPrivateKey: DHPrivateKey): SecretKey {
         // 相手の公開鍵を生成
         val publicKeySpec = DHPublicKeySpec(othersY, p, g)
-        val keyFactory = KeyFactory.getInstance("DiffieHellman")
-        val othersPublicKey = keyFactory.generatePublic(publicKeySpec) as DHPublicKey
+        val keyFactory: KeyFactory = KeyFactory.getInstance("DiffieHellman")
+        val othersPublicKey: DHPublicKey = keyFactory.generatePublic(publicKeySpec) as DHPublicKey
 
         // 相手の公開鍵と自分の秘密鍵から共通鍵を生成
-        val keyAgreement = KeyAgreement.getInstance("DiffieHellman")
+        val keyAgreement: KeyAgreement = KeyAgreement.getInstance("DiffieHellman")
         keyAgreement.init(myPrivateKey)
         keyAgreement.doPhase(othersPublicKey, true)
         return keyAgreement.generateSecret("AES")
@@ -57,7 +58,7 @@ class MySupportClass {
     }
 
     fun strKey2SecKey(strKey:String):SecretKey{
-        val encodedKey = Base64.decode(strKey, Base64.DEFAULT)
+        val encodedKey: ByteArray = Base64.decode(strKey, Base64.DEFAULT)
         return SecretKeySpec(encodedKey, 0, encodedKey.size, "AES")
     }
 
