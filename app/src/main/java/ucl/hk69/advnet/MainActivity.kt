@@ -4,24 +4,22 @@ import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothSocket
 import android.content.Context
 import android.content.SharedPreferences
-import android.graphics.Color
 import android.os.Bundle
+import android.util.Base64
 import android.util.Log
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKeys
-import com.google.android.material.snackbar.Snackbar
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import java.io.DataInputStream
 import java.io.DataOutputStream
-import java.lang.Exception
 import java.net.Socket
+import java.security.SecureRandom
 import javax.crypto.interfaces.DHPrivateKey
 import javax.crypto.interfaces.DHPublicKey
+import javax.crypto.spec.IvParameterSpec
 
 class MainActivity : AppCompatActivity() {
     private val mySup = MySupportClass()
@@ -117,8 +115,8 @@ class MainActivity : AppCompatActivity() {
 
             GlobalScope.launch {
                 if(dos == null) dos = checkData(preferences)
-                if(kaigityu) sendData(mySup.KAIGI_OFF)
-                else sendData(mySup.KAIGI_ON)
+                if(kaigityu) sendData(mySup.KAIGI_OFF, preferences)
+                else sendData(mySup.KAIGI_ON, preferences)
 
                 kaigityu = !kaigityu
             }
@@ -127,36 +125,43 @@ class MainActivity : AppCompatActivity() {
         buttonStateSyoto.setOnClickListener {
             if(dos == null) dos = checkData(preferences)
             GlobalScope.launch {
-                sendData(mySup.STATE_OFF)
+                sendData(mySup.STATE_OFF, preferences)
             }
         }
 
         buttonStateRed.setOnClickListener {
             GlobalScope.launch {
                 if(dos == null) dos = checkData(preferences)
-                sendData(mySup.STATE_RED)
+                sendData(mySup.STATE_RED, preferences)
             }
         }
 
         buttonStateYellow.setOnClickListener{
             GlobalScope.launch {
                 if(dos == null) dos = checkData(preferences)
-                sendData(mySup.STATE_YELLOW)
+                sendData(mySup.STATE_YELLOW, preferences)
             }
         }
 
         buttonStateGreen.setOnClickListener {
             GlobalScope.launch {
                 if(dos == null) dos = checkData(preferences)
-                sendData(mySup.STATE_GREEN)
+                sendData(mySup.STATE_GREEN, preferences)
             }
         }
     }
 
-    private fun sendData(data:Int){
+    private fun sendData(data:Int, pref:SharedPreferences){
         try {
             if (dos == null) dos = DataOutputStream(Socket(ip, mySup.PORT).getOutputStream())
-            dos!!.writeByte(data)
+
+            val random = SecureRandom()
+            val iv = ByteArray(16)
+            random.nextBytes(iv)
+            val ivParamSpec = IvParameterSpec(iv)
+            dos!!.writeUTF(Base64.encodeToString(iv, Base64.DEFAULT))
+            val crypt = mySup.enc(data, mySup.strKey2SecKey(pref.getString("key", null)), ivParamSpec)
+            dos!!.writeUTF(Base64.encodeToString(crypt, Base64.DEFAULT))
         }catch (e:Exception){e.printStackTrace()}
     }
 

@@ -25,7 +25,6 @@ class MySupportClass {
     val STATE_YELLOW = 4
     val STATE_GREEN = 5
     val STATE_OFF = 6
-    val DISCONNECT = 7
 
     fun genKeyPair(): KeyPair {
         val keyGen: KeyPairGenerator = KeyPairGenerator.getInstance("DiffieHellman")
@@ -57,7 +56,7 @@ class MySupportClass {
         return Base64.encodeToString(secKey.encoded, Base64.DEFAULT)
     }
 
-    fun strKey2SecKey(strKey:String):SecretKey{
+    fun strKey2SecKey(strKey:String?):SecretKey{
         val encodedKey: ByteArray = Base64.decode(strKey, Base64.DEFAULT)
         return SecretKeySpec(encodedKey, 0, encodedKey.size, "AES")
     }
