@@ -6,8 +6,6 @@
     <string name="state_yesno">入室可・応答不可</string>
     <string name="state_yesyes">入室可・応答可</string>
     <string name="key_sharing">鍵交換</string>
-    <string name="have_key">鍵あり</string>
-    <string name="not_have_key">鍵なし</string>
     <string name="dialog_title_state">状態表示を変更</string>
     <string name="dialog_title_btdevice">接続先端末を選択</string>
 </resources>
