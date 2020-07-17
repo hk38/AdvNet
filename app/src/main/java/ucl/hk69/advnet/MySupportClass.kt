@@ -61,15 +61,16 @@ class MySupportClass {
         return SecretKeySpec(encodedKey, 0, encodedKey.size, "AES")
     }
 
-    fun enc(plainText: Int, key: SecretKey, iv: IvParameterSpec): ByteArray {
+    fun enc(plainText: Int, key: SecretKey, iv: IvParameterSpec): String {
         val encrypter = Cipher.getInstance("AES/CBC/PKCS5Padding")
         encrypter.init(Cipher.ENCRYPT_MODE, key, iv)
-        return encrypter.doFinal(plainText.toString().toByteArray())
+        return Base64.encodeToString(encrypter.doFinal(plainText.toString().toByteArray()), Base64.DEFAULT)
     }
 
-    fun dec(cryptoText: ByteArray, key: SecretKey, iv: IvParameterSpec): Int {
+    fun dec(cryptoText: String, key: SecretKey, iv: IvParameterSpec): Int {
+        val crypto = Base64.decode(cryptoText, Base64.DEFAULT)
         val decrypter = Cipher.getInstance("AES/CBC/PKCS5Padding")
         decrypter.init(Cipher.DECRYPT_MODE, key, iv)
-        return String(decrypter.doFinal(cryptoText)).toInt()
+        return String(decrypter.doFinal(crypto)).toInt()
     }
 }
