@@ -31,6 +31,7 @@ class MainActivity : AppCompatActivity() {
     private val masterKeyAlias = MasterKeys.getOrCreate(keyGenParameterSpec)
     private var socket: Socket? = null
     private var dos:DataOutputStream? = null
+    private var secNo = 0
 
     private val pref:SharedPreferences by lazy {
         EncryptedSharedPreferences.create("Data", masterKeyAlias, applicationContext, EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV, EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM)
@@ -44,30 +45,16 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         executor = ContextCompat.getMainExecutor(this)
-        biometricPrompt = BiometricPrompt(this, executor,
-            object : BiometricPrompt.AuthenticationCallback() {
-                override fun onAuthenticationError(errorCode: Int,
-                                                   errString: CharSequence) {
-                    super.onAuthenticationError(errorCode, errString)
-                    Toast.makeText(applicationContext,
-                        "Authentication error: $errString", Toast.LENGTH_SHORT)
-                        .show()
+        biometricPrompt = BiometricPrompt(this, executor, object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationError(code: Int, str: CharSequence) {
+                    super.onAuthenticationError(code, str)
+                    Toast.makeText(applicationContext, "認証エラー: $str", Toast.LENGTH_SHORT).show()
                     finish()
-                }
-
-                override fun onAuthenticationSucceeded(
-                    result: BiometricPrompt.AuthenticationResult) {
-                    super.onAuthenticationSucceeded(result)
-                    Toast.makeText(applicationContext,
-                        "Authentication succeeded!", Toast.LENGTH_SHORT)
-                        .show()
                 }
 
                 override fun onAuthenticationFailed() {
                     super.onAuthenticationFailed()
-                    Toast.makeText(applicationContext, "Authentication failed",
-                        Toast.LENGTH_SHORT)
-                        .show()
+                    Toast.makeText(applicationContext, "認証失敗", Toast.LENGTH_SHORT).show()
                     finish()
                 }
             })
@@ -135,7 +122,6 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
                 GlobalScope.launch {
-
                     dos = checkData()
                 }
             }catch (e:Exception){
@@ -193,12 +179,13 @@ class MainActivity : AppCompatActivity() {
         try {
             if (dos == null) dos = checkData()
 
+            secNo++
             val random = SecureRandom()
             val iv = ByteArray(16)
             random.nextBytes(iv)
             val ivParamSpec = IvParameterSpec(iv)
             dos?.writeUTF(Base64.encodeToString(iv, Base64.DEFAULT))
-            dos?.writeUTF(mySup.enc(data, mySup.strKey2SecKey(pref.getString("key", null)), ivParamSpec))
+            dos?.writeUTF(mySup.enc((secNo*10+data), mySup.strKey2SecKey(pref.getString("key", null)), ivParamSpec))
             dos?.flush()
 
             return if(dos == null) 1

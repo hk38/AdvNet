@@ -1,6 +1,5 @@
 package ucl.hk69.advnet
 
-import android.util.Base64
 import java.math.BigInteger
 import java.security.KeyFactory
 import java.security.KeyPair
@@ -8,6 +7,7 @@ import java.security.KeyPairGenerator
 import java.util.*
 import javax.crypto.Cipher
 import javax.crypto.KeyAgreement
+import javax.crypto.Mac
 import javax.crypto.SecretKey
 import javax.crypto.interfaces.DHPrivateKey
 import javax.crypto.interfaces.DHPublicKey
@@ -40,12 +40,10 @@ class MySupportClass {
     }
 
     fun genSecKey(p: BigInteger, g: BigInteger, othersY: BigInteger, myPrivateKey: DHPrivateKey): SecretKey {
-        // 相手の公開鍵を生成
         val publicKeySpec = DHPublicKeySpec(othersY, p, g)
         val keyFactory: KeyFactory = KeyFactory.getInstance("DiffieHellman")
         val othersPublicKey: DHPublicKey = keyFactory.generatePublic(publicKeySpec) as DHPublicKey
 
-        // 相手の公開鍵と自分の秘密鍵から共通鍵を生成
         val keyAgreement: KeyAgreement = KeyAgreement.getInstance("DiffieHellman")
         keyAgreement.init(myPrivateKey)
         keyAgreement.doPhase(othersPublicKey, true)
@@ -53,24 +51,43 @@ class MySupportClass {
     }
 
     fun secKey2StrKey(secKey: SecretKey):String{
-        return Base64.encodeToString(secKey.encoded, Base64.DEFAULT)
+        return Base64.getEncoder().encodeToString(secKey.encoded)
     }
 
     fun strKey2SecKey(strKey:String?):SecretKey{
-        val encodedKey: ByteArray = Base64.decode(strKey, Base64.DEFAULT)
+        val encodedKey: ByteArray = Base64.getDecoder().decode(strKey)
         return SecretKeySpec(encodedKey, 0, encodedKey.size, "AES")
     }
+
 
     fun enc(plainText: Int, key: SecretKey, iv: IvParameterSpec): String {
         val encrypter = Cipher.getInstance("AES/CBC/PKCS5Padding")
         encrypter.init(Cipher.ENCRYPT_MODE, key, iv)
-        return Base64.encodeToString(encrypter.doFinal(plainText.toString().toByteArray()), Base64.DEFAULT)
+
+        val mac = Mac.getInstance("HmacSHA256");
+        mac.init(key)
+
+        val msgArray = encrypter.doFinal(plainText.toString().toByteArray())
+        val macArray = mac.doFinal(msgArray)
+
+        val cryptArray = ByteArray(msgArray.size + macArray.size)
+        System.arraycopy(macArray, 0, cryptArray, 0, macArray.size)
+        System.arraycopy(msgArray, 0, cryptArray, macArray.size, msgArray.size)
+
+        return Base64.getEncoder().encodeToString(cryptArray)
     }
 
-    fun dec(cryptoText: String, key: SecretKey, iv: IvParameterSpec): Int {
-        val crypto = Base64.decode(cryptoText, Base64.DEFAULT)
+    fun dec(cryptText: String, key: SecretKey, iv: IvParameterSpec): Int {
+        val cryptArray =  Base64.getDecoder().decode(cryptText)
+        val macArray = cryptArray.sliceArray(0..31)
+        val msgArray = cryptArray.sliceArray(32 until cryptArray.size)
+
+        val mac = Mac.getInstance("HmacSHA256");
+        mac.init(key)
+        if(!macArray.contentEquals(mac.doFinal(msgArray))) return 0
+
         val decrypter = Cipher.getInstance("AES/CBC/PKCS5Padding")
         decrypter.init(Cipher.DECRYPT_MODE, key, iv)
-        return String(decrypter.doFinal(crypto)).toInt()
+        return String(decrypter.doFinal(msgArray)).toInt()
     }
 }
